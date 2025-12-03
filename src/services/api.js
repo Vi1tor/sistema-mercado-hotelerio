@@ -64,6 +64,7 @@ export const analysisAPI = {
   generateMarketAnalysis: (city) => api.post(`/analysis/market/${city}/generate`),
   getMarketHistory: (city, limit = 10) => api.get(`/analysis/market/${city}/history`, { params: { limit } }),
   getOccupancy: (city) => api.get(`/analysis/occupancy/${city}`),
+  getCategoryAnalysis: (city, type) => api.get(`/analysis/category/${city}/${type}`),
 };
 
 // Reports
@@ -75,7 +76,7 @@ export const reportsAPI = {
 
 // Scraping
 export const scrapingAPI = {
-  trigger: (city, platform = 'all') => api.post(`/scraping/trigger/${city}`, { platform }),
+  trigger: (city, platform = 'all', options = {}) => api.post(`/scraping/trigger/${city}`, { platform, ...options }),
   getStatus: () => api.get('/scraping/status'),
   getCitiesToUpdate: (hours = 6) => api.get('/scraping/cities-to-update', { params: { hoursThreshold: hours } }),
 };

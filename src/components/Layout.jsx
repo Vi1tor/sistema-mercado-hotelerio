@@ -7,7 +7,9 @@ import {
   GitCompare, 
   FileText, 
   Menu,
-  X
+  X,
+  Filter,
+  Download
 } from 'lucide-react';
 
 export default function Layout({ children }) {
@@ -18,6 +20,8 @@ export default function Layout({ children }) {
     { name: 'Hospedagens', href: '/hospedagens', icon: Building2 },
     { name: 'Análise', href: '/analise', icon: TrendingUp },
     { name: 'Comparação', href: '/comparacao', icon: GitCompare },
+    { name: 'Por Categoria', href: '/comparacao-categoria', icon: Filter },
+    { name: 'Coleta de Dados', href: '/coleta', icon: Download },
     { name: 'Relatórios', href: '/relatorios', icon: FileText },
   ];
 

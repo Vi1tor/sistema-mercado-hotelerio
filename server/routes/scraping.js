@@ -8,23 +8,45 @@ const router = express.Router();
 router.post('/trigger/:city', async (req, res) => {
   try {
     const { city } = req.params;
-    const { platform = 'booking' } = req.body;
+    const { 
+      platform = 'booking',
+      type = 'pousada',
+      minPrice = 0,
+      maxPrice = 5000,
+      useRealScraping = false,
+    } = req.body;
+
+    console.log(`🚀 Iniciando scraping para ${type}s em ${city}`);
+    console.log(`💰 Faixa de preço: R$ ${minPrice} - R$ ${maxPrice}`);
+    console.log(`🌐 Modo: ${useRealScraping ? 'Real (Puppeteer)' : 'Mock Data'}`);
+
+    // Start scraping and wait for results
+    let result;
+    if (platform === 'booking' || platform === 'all') {
+      result = await scrapeBooking(city, {
+        type,
+        minPrice,
+        maxPrice,
+        useRealScraping,
+      });
+    }
 
     res.json({
-      message: 'Scraping iniciado',
+      message: 'Scraping concluído com sucesso',
       city,
       platform,
-      status: 'processing',
+      type,
+      priceRange: { min: minPrice, max: maxPrice },
+      status: 'completed',
+      result,
     });
 
-    // Run scraping in background
-    if (platform === 'booking' || platform === 'all') {
-      scrapeBooking(city).catch((err) => console.error('Erro no scraping Booking:', err));
-    }
-    if (platform === 'expedia' || platform === 'all') {
+    // Run additional platforms in background if needed
+    if (platform === 'all' || platform === 'expedia') {
       scrapeExpedia(city).catch((err) => console.error('Erro no scraping Expedia:', err));
     }
   } catch (error) {
+    console.error('❌ Erro ao iniciar scraping:', error);
     res.status(500).json({ error: 'Erro ao iniciar scraping', details: error.message });
   }
 });

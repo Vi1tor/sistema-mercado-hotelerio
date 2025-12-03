@@ -7,7 +7,9 @@ import Accommodations from './pages/Accommodations';
 import AccommodationDetail from './pages/AccommodationDetail';
 import Analysis from './pages/Analysis';
 import Comparison from './pages/Comparison';
+import CategoryComparison from './pages/CategoryComparison';
 import Reports from './pages/Reports';
+import Scraping from './pages/Scraping';
 
 function App() {
   return (
@@ -20,6 +22,8 @@ function App() {
             <Route path="/hospedagens/:id" element={<AccommodationDetail />} />
             <Route path="/analise" element={<Analysis />} />
             <Route path="/comparacao" element={<Comparison />} />
+            <Route path="/comparacao-categoria" element={<CategoryComparison />} />
+            <Route path="/coleta" element={<Scraping />} />
             <Route path="/relatorios" element={<Reports />} />
           </Routes>
         </Layout>
