@@ -122,7 +122,26 @@ router.get('/', async (req, res) => {
 // GET accommodation by ID
 router.get('/:id', async (req, res) => {
   try {
-    const accommodation = await Accommodation.findById(req.params.id);
+    const { id } = req.params;
+    
+    // Se for um ID mock, buscar nos dados mock
+    if (id.startsWith('mock-')) {
+      const parts = id.split('-');
+      const cityName = parts.slice(1, -1).join('-');
+      const index = parseInt(parts[parts.length - 1]);
+      
+      const mockData = generateMockAccommodations(cityName, 50);
+      const accommodation = mockData.find(acc => acc._id === id);
+      
+      if (!accommodation) {
+        return res.status(404).json({ error: 'Hospedagem não encontrada' });
+      }
+      
+      return res.json(accommodation);
+    }
+    
+    // Buscar no MongoDB
+    const accommodation = await Accommodation.findById(id);
     
     if (!accommodation) {
       return res.status(404).json({ error: 'Hospedagem não encontrada' });
@@ -202,6 +221,41 @@ router.get('/:id/price-history', async (req, res) => {
   try {
     const { id } = req.params;
     const { days = 30 } = req.query;
+    
+    // Se for um ID mock, buscar nos dados mock
+    if (id.startsWith('mock-')) {
+      const parts = id.split('-');
+      const cityName = parts.slice(1, -1).join('-');
+      
+      const mockData = generateMockAccommodations(cityName, 50);
+      const accommodation = mockData.find(acc => acc._id === id);
+      
+      if (!accommodation) {
+        return res.status(404).json({ error: 'Hospedagem não encontrada' });
+      }
+      
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - Number(days));
+
+      const history = accommodation.priceHistory
+        .filter((item) => item.date >= cutoffDate)
+        .sort((a, b) => a.date - b.date);
+
+      const trend = accommodation.getPriceTrend(Number(days));
+
+      return res.json({
+        accommodationId: id,
+        name: accommodation.name,
+        currentPrice: accommodation.currentPrice,
+        history,
+        trend,
+        stats: {
+          min: Math.min(...history.map((h) => h.price)),
+          max: Math.max(...history.map((h) => h.price)),
+          average: history.reduce((sum, h) => sum + h.price, 0) / history.length,
+        },
+      });
+    }
 
     const accommodation = await Accommodation.findById(id);
     
