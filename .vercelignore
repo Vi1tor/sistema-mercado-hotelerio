@@ -1,0 +1,11 @@
+# Ignore server/backend when deploying to Vercel (deploy frontend only)
+server/**
+server
+.env
+.env.*
+node_modules/
+dist/
+.DS_Store
+.vscode/
+.idea/
+.git/

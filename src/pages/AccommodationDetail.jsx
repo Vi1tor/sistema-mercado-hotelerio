@@ -13,6 +13,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { accommodationsAPI } from '../services/api';
+import { useApp } from '../contexts/AppContext';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -52,11 +53,20 @@ export default function AccommodationDetail() {
     );
   }
 
+  const { setSelectedCity, cities } = useApp();
+
   if (!accommodation) {
     return (
       <div className="card text-center py-12">
         <p className="text-gray-500 text-lg">Hospedagem não encontrada</p>
-        <button onClick={() => navigate('/hospedagens')} className="btn-primary mt-4">
+        <button
+          onClick={() => {
+            // If we have cities loaded, fallback to the first city to ensure list loads
+            if (cities && cities.length > 0) setSelectedCity(cities[0]);
+            navigate('/hospedagens');
+          }}
+          className="btn-primary mt-4"
+        >
           Voltar para Hospedagens
         </button>
       </div>
@@ -72,7 +82,11 @@ export default function AccommodationDetail() {
     <div className="space-y-6 animate-fade-in">
       {/* Back button */}
       <button
-        onClick={() => navigate('/hospedagens')}
+        onClick={() => {
+          // ensure the accommodations list shows this accommodation's city
+          if (accommodation?.city) setSelectedCity(accommodation.city);
+          navigate('/hospedagens');
+        }}
         className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
       >
         <ArrowLeft className="w-5 h-5" />
