@@ -1,0 +1,31 @@
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { AppProvider } from './contexts/AppContext';
+import Layout from './components/Layout';
+import Dashboard from './pages/Dashboard';
+import Accommodations from './pages/Accommodations';
+import AccommodationDetail from './pages/AccommodationDetail';
+import Analysis from './pages/Analysis';
+import Comparison from './pages/Comparison';
+import Reports from './pages/Reports';
+
+function App() {
+  return (
+    <AppProvider>
+      <Router>
+        <Layout>
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/hospedagens" element={<Accommodations />} />
+            <Route path="/hospedagens/:id" element={<AccommodationDetail />} />
+            <Route path="/analise" element={<Analysis />} />
+            <Route path="/comparacao" element={<Comparison />} />
+            <Route path="/relatorios" element={<Reports />} />
+          </Routes>
+        </Layout>
+      </Router>
+    </AppProvider>
+  );
+}
+
+export default App;
