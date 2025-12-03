@@ -1,13 +1,5 @@
-// Seed script to populate the database with sample data
-// Run with: node server/seed.js
-
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import Accommodation from './models/Accommodation.js';
-
-dotenv.config();
-
-const cities = [
+// Mock data para funcionar sem conexão com MongoDB
+export const mockCities = [
   // Sul
   { name: 'Gramado', state: 'RS' },
   { name: 'Canela', state: 'RS' },
@@ -40,6 +32,7 @@ const cities = [
   { name: 'Tiradentes', state: 'MG' },
   { name: 'São Lourenço', state: 'MG' },
   { name: 'Capitólio', state: 'MG' },
+  { name: 'Monte Verde', state: 'MG' },
   { name: 'Vitória', state: 'ES' },
   { name: 'Guarapari', state: 'ES' },
   
@@ -66,7 +59,6 @@ const cities = [
   { name: 'Campina Grande', state: 'PB' },
   { name: 'São Luís', state: 'MA' },
   { name: 'Lençóis Maranhenses', state: 'MA' },
-  { name: 'Jijoca de Jericoacoara', state: 'CE' },
   
   // Centro-Oeste
   { name: 'Brasília', state: 'DF' },
@@ -119,7 +111,7 @@ function generatePriceHistory(basePrice, days = 30) {
     const date = new Date(today);
     date.setDate(date.getDate() - i);
 
-    const variation = (Math.random() - 0.5) * 0.3; // ±15% variation
+    const variation = (Math.random() - 0.5) * 0.3;
     const price = basePrice * (1 + variation);
     const occupancyRate = Math.random() * 100;
 
@@ -134,13 +126,15 @@ function generatePriceHistory(basePrice, days = 30) {
   return history;
 }
 
-function generateAccommodations(cityData, count) {
+export function generateMockAccommodations(cityName, count = 30) {
   const accommodations = [];
+  const cityData = mockCities.find(c => c.name === cityName);
+  
+  if (!cityData) return [];
 
   for (let i = 0; i < count; i++) {
     const type = types[Math.floor(Math.random() * types.length)];
     
-    // Base price depends on type
     let basePrice;
     switch (type) {
       case 'resort':
@@ -166,10 +160,11 @@ function generateAccommodations(cityData, count) {
     }
 
     const currentPrice = Math.round(basePrice * 100) / 100;
-    const rating = 6 + Math.random() * 4; // 6-10
+    const rating = 6 + Math.random() * 4;
     const totalReviews = Math.floor(Math.random() * 500) + 20;
 
     accommodations.push({
+      _id: `mock-${cityName}-${i}`,
       name: `${type.charAt(0).toUpperCase() + type.slice(1)} ${cityData.name} ${i + 1}`,
       type,
       city: cityData.name,
@@ -179,8 +174,8 @@ function generateAccommodations(cityData, count) {
       location: {
         type: 'Point',
         coordinates: [
-          -46.6 + Math.random() * 0.2, // longitude
-          -23.5 + Math.random() * 0.2, // latitude
+          -46.6 + Math.random() * 0.2,
+          -23.5 + Math.random() * 0.2,
         ],
       },
       currentPrice,
@@ -213,52 +208,103 @@ function generateAccommodations(cityData, count) {
       demandLevel: ['baixa', 'média', 'alta', 'muito alta'][Math.floor(Math.random() * 4)],
       lastScrapedAt: new Date(),
       isActive: true,
+      getPriceTrend: function(days = 7) {
+        const recentHistory = this.priceHistory.slice(-days);
+        if (recentHistory.length < 2) return 0;
+        
+        const firstPrice = recentHistory[0].price;
+        const lastPrice = recentHistory[recentHistory.length - 1].price;
+        
+        return ((lastPrice - firstPrice) / firstPrice) * 100;
+      }
     });
   }
 
   return accommodations;
 }
 
-async function seed() {
-  try {
-    console.log('🌱 Iniciando seed do banco de dados...');
-
-    // Connect to MongoDB
-    await mongoose.connect(
-      process.env.MONGODB_URI || 'mongodb://localhost:27017/hotel-market-analysis'
-    );
-    console.log('✅ Conectado ao MongoDB');
-
-    // Clear existing data
-    console.log('🗑️  Limpando dados existentes...');
-    await Accommodation.deleteMany({});
-
-    // Generate and insert accommodations for each city
-    for (const city of cities) {
-      console.log(`📍 Gerando dados para ${city.name}...`);
-      const count = Math.floor(Math.random() * 20) + 30; // 30-50 accommodations per city
-      const accommodations = generateAccommodations(city, count);
-      
-      await Accommodation.insertMany(accommodations);
-      console.log(`   ✅ ${count} hospedagens criadas para ${city.name}`);
-    }
-
-    const total = await Accommodation.countDocuments();
-    console.log(`\n🎉 Seed concluído! Total de ${total} hospedagens criadas.`);
-    console.log('\n📊 Distribuição por cidade:');
-    
-    for (const city of cities) {
-      const count = await Accommodation.countDocuments({ city: city.name });
-      console.log(`   ${city.name}: ${count} hospedagens`);
-    }
-
-    console.log('\n✨ Banco de dados populado com sucesso!');
-    process.exit(0);
-  } catch (error) {
-    console.error('❌ Erro ao popular banco de dados:', error);
-    process.exit(1);
-  }
+export function generateMockAnalysis(cityName) {
+  const mockAccommodations = generateMockAccommodations(cityName, 50);
+  
+  const avgPrice = mockAccommodations.reduce((sum, acc) => sum + acc.currentPrice, 0) / mockAccommodations.length;
+  const avgOccupancy = mockAccommodations.reduce((sum, acc) => sum + acc.availability.occupancyRate, 0) / mockAccommodations.length;
+  const avgRating = mockAccommodations.reduce((sum, acc) => sum + acc.rating.score, 0) / mockAccommodations.length;
+  
+  const demandScore = Math.round(
+    (avgOccupancy * 0.3) +
+    (Math.random() * 30) +
+    (avgRating * 10 * 0.2) +
+    (Math.random() * 20)
+  );
+  
+  return {
+    _id: `mock-analysis-${cityName}`,
+    city: cityName,
+    state: mockCities.find(c => c.name === cityName)?.state || 'SP',
+    analysisDate: new Date(),
+    demandAnalysis: {
+      level: demandScore > 75 ? 'muito alta' : demandScore > 50 ? 'alta' : demandScore > 25 ? 'média' : 'baixa',
+      score: demandScore,
+      trend: ['crescente', 'estável', 'decrescente'][Math.floor(Math.random() * 3)],
+      factors: [
+        'Alta ocupação média',
+        'Crescimento de avaliações positivas',
+        'Aumento de preços recente',
+      ],
+    },
+    priceAnalysis: {
+      average: Math.round(avgPrice * 100) / 100,
+      median: Math.round(avgPrice * 0.95 * 100) / 100,
+      min: Math.round(avgPrice * 0.5 * 100) / 100,
+      max: Math.round(avgPrice * 2 * 100) / 100,
+      byType: types.reduce((acc, type) => {
+        const typeAccs = mockAccommodations.filter(a => a.type === type);
+        if (typeAccs.length > 0) {
+          acc[type] = {
+            average: Math.round(typeAccs.reduce((sum, a) => sum + a.currentPrice, 0) / typeAccs.length * 100) / 100,
+            count: typeAccs.length,
+          };
+        }
+        return acc;
+      }, {}),
+    },
+    occupancyAnalysis: {
+      average: Math.round(avgOccupancy * 10) / 10,
+      total: mockAccommodations.length,
+      byType: types.reduce((acc, type) => {
+        const typeAccs = mockAccommodations.filter(a => a.type === type);
+        if (typeAccs.length > 0) {
+          acc[type] = {
+            average: Math.round(typeAccs.reduce((sum, a) => sum + a.availability.occupancyRate, 0) / typeAccs.length * 10) / 10,
+            count: typeAccs.length,
+          };
+        }
+        return acc;
+      }, {}),
+    },
+    ratingAnalysis: {
+      average: Math.round(avgRating * 10) / 10,
+      distribution: {
+        excellent: Math.floor(mockAccommodations.filter(a => a.rating.score >= 9).length),
+        good: Math.floor(mockAccommodations.filter(a => a.rating.score >= 7 && a.rating.score < 9).length),
+        average: Math.floor(mockAccommodations.filter(a => a.rating.score < 7).length),
+      },
+    },
+    alerts: [
+      {
+        type: 'oportunidade',
+        severity: 'info',
+        message: 'Demanda crescente detectada nesta região',
+        date: new Date(),
+      },
+    ],
+    recommendations: [
+      {
+        title: 'Ajuste de Preços',
+        description: 'Considere ajustar preços com base na demanda atual',
+        priority: 'alta',
+        impact: 'médio',
+      },
+    ],
+  };
 }
-
-// Run seed
-seed();

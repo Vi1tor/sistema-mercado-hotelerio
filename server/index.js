@@ -25,14 +25,25 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // MongoDB Connection
-mongoose
-  .connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/hotel-market-analysis')
-  .then(() => {
-    console.log('✅ MongoDB conectado com sucesso');
-  })
-  .catch((err) => {
-    console.error('❌ Erro ao conectar MongoDB:', err);
-  });
+global.mongoConnected = false;
+
+if (process.env.USE_MOCK_DATA !== 'true') {
+  mongoose
+    .connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/hotel-market-analysis')
+    .then(() => {
+      console.log('✅ MongoDB conectado com sucesso');
+      global.mongoConnected = true;
+    })
+    .catch((err) => {
+      console.error('❌ Erro ao conectar MongoDB:', err);
+      console.log('ℹ️  Usando dados MOCK - configure MongoDB para dados reais');
+      global.mongoConnected = false;
+    });
+} else {
+  console.log('ℹ️  Modo MOCK DATA ativado - usando dados de exemplo');
+  console.log('ℹ️  70+ cidades turísticas brasileiras disponíveis');
+  console.log('ℹ️  Para usar dados reais, configure MongoDB e remova USE_MOCK_DATA do .env');
+}
 
 // Routes
 app.use('/api/accommodations', accommodationRoutes);

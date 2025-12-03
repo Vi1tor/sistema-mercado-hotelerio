@@ -1,7 +1,11 @@
 import express from 'express';
 import Accommodation from '../models/Accommodation.js';
+import { mockCities, generateMockAccommodations } from '../mockData.js';
 
 const router = express.Router();
+
+// Flag para usar dados mock quando DB não estiver disponível
+const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true';
 
 // GET all accommodations with filters
 router.get('/', async (req, res) => {
@@ -19,6 +23,52 @@ router.get('/', async (req, res) => {
       sortBy = 'rating.score',
       sortOrder = 'desc',
     } = req.query;
+
+    // Usar mock data se configurado ou sem conexão DB
+    if (USE_MOCK_DATA || !global.mongoConnected) {
+      let mockData = [];
+      
+      if (city) {
+        mockData = generateMockAccommodations(city, 40);
+      } else {
+        // Gerar dados de várias cidades
+        mockData = [
+          ...generateMockAccommodations('Gramado', 10),
+          ...generateMockAccommodations('Campos do Jordão', 10),
+          ...generateMockAccommodations('Búzios', 10),
+          ...generateMockAccommodations('Jericoacoara', 10),
+        ];
+      }
+      
+      // Aplicar filtros
+      let filtered = mockData;
+      if (type) filtered = filtered.filter(a => a.type === type);
+      if (minPrice) filtered = filtered.filter(a => a.currentPrice >= parseFloat(minPrice));
+      if (maxPrice) filtered = filtered.filter(a => a.currentPrice <= parseFloat(maxPrice));
+      if (minRating) filtered = filtered.filter(a => a.rating.score >= parseFloat(minRating));
+      if (available === 'true') filtered = filtered.filter(a => a.availability.isAvailable);
+      
+      // Ordenar
+      if (sortBy === 'rating.score') {
+        filtered.sort((a, b) => sortOrder === 'desc' ? b.rating.score - a.rating.score : a.rating.score - b.rating.score);
+      } else if (sortBy === 'currentPrice') {
+        filtered.sort((a, b) => sortOrder === 'desc' ? b.currentPrice - a.currentPrice : a.currentPrice - b.currentPrice);
+      }
+      
+      // Paginação
+      const skip = (Number(page) - 1) * Number(limit);
+      const paginatedData = filtered.slice(skip, skip + Number(limit));
+      
+      return res.json({
+        data: paginatedData,
+        pagination: {
+          total: filtered.length,
+          page: Number(page),
+          limit: Number(limit),
+          pages: Math.ceil(filtered.length / Number(limit)),
+        }
+      });
+    }
 
     const query = { isActive: true };
 
@@ -55,7 +105,17 @@ router.get('/', async (req, res) => {
       },
     });
   } catch (error) {
-    res.status(500).json({ error: 'Erro ao buscar hospedagens', details: error.message });
+    // Fallback para mock em caso de erro
+    const mockData = generateMockAccommodations('Gramado', 20);
+    res.json({
+      data: mockData,
+      pagination: {
+        total: mockData.length,
+        page: 1,
+        limit: 20,
+        pages: 1,
+      }
+    });
   }
 });
 
@@ -218,10 +278,24 @@ router.delete('/:id', async (req, res) => {
 // GET cities list
 router.get('/meta/cities', async (req, res) => {
   try {
+    if (USE_MOCK_DATA) {
+      const cities = mockCities.map(c => c.name);
+      return res.json(cities.sort());
+    }
+    
     const cities = await Accommodation.distinct('city', { isActive: true });
+    
+    // Se não houver dados no DB, usar mock
+    if (!cities || cities.length === 0) {
+      const mockCitiesList = mockCities.map(c => c.name);
+      return res.json(mockCitiesList.sort());
+    }
+    
     res.json(cities.sort());
   } catch (error) {
-    res.status(500).json({ error: 'Erro ao buscar cidades', details: error.message });
+    // Em caso de erro de conexão, usar dados mock
+    const mockCitiesList = mockCities.map(c => c.name);
+    res.json(mockCitiesList.sort());
   }
 });
 

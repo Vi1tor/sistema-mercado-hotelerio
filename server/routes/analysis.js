@@ -2,6 +2,7 @@ import express from 'express';
 import MarketAnalysis from '../models/MarketAnalysis.js';
 import Accommodation from '../models/Accommodation.js';
 import { analyzeCityDemand, generateMarketAnalysis } from '../services/analysisService.js';
+import { generateMockAccommodations, generateMockAnalysis } from '../mockData.js';
 
 const router = express.Router();
 
@@ -9,9 +10,17 @@ const router = express.Router();
 router.get('/demand/:city', async (req, res) => {
   try {
     const { city } = req.params;
+    
+    // Use mock data if MongoDB is not connected
+    if (!global.mongoConnected) {
+      const mockAnalysis = generateMockAnalysis(city);
+      return res.json(mockAnalysis.demandAnalysis);
+    }
+    
     const demandAnalysis = await analyzeCityDemand(city);
     res.json(demandAnalysis);
   } catch (error) {
+    console.error('Erro ao analisar demanda:', error);
     res.status(500).json({ error: 'Erro ao analisar demanda', details: error.message });
   }
 });
@@ -22,10 +31,16 @@ router.get('/trends/:city', async (req, res) => {
     const { city } = req.params;
     const { days = 30 } = req.query;
 
-    const accommodations = await Accommodation.find({
-      city: new RegExp(city, 'i'),
-      isActive: true,
-    });
+    // Use mock data if MongoDB is not connected
+    let accommodations;
+    if (!global.mongoConnected) {
+      accommodations = generateMockAccommodations(city, 50);
+    } else {
+      accommodations = await Accommodation.find({
+        city: new RegExp(city, 'i'),
+        isActive: true,
+      });
+    }
 
     const cutoffDate = new Date();
     cutoffDate.setDate(cutoffDate.getDate() - Number(days));
@@ -77,10 +92,16 @@ router.get('/comparison/:city', async (req, res) => {
   try {
     const { city } = req.params;
 
-    const accommodations = await Accommodation.find({
-      city: new RegExp(city, 'i'),
-      isActive: true,
-    });
+    // Use mock data if MongoDB is not connected
+    let accommodations;
+    if (!global.mongoConnected) {
+      accommodations = generateMockAccommodations(city, 50);
+    } else {
+      accommodations = await Accommodation.find({
+        city: new RegExp(city, 'i'),
+        isActive: true,
+      });
+    }
 
     const comparison = {};
 
@@ -144,6 +165,12 @@ router.get('/market/:city', async (req, res) => {
   try {
     const { city } = req.params;
 
+    // Use mock data if MongoDB is not connected
+    if (!global.mongoConnected) {
+      const mockAnalysis = generateMockAnalysis(city);
+      return res.json(mockAnalysis);
+    }
+
     let analysis = await MarketAnalysis.findOne({
       city: new RegExp(city, 'i'),
     })
@@ -166,6 +193,13 @@ router.get('/market/:city', async (req, res) => {
 router.post('/market/:city/generate', async (req, res) => {
   try {
     const { city } = req.params;
+    
+    // Use mock data if MongoDB is not connected
+    if (!global.mongoConnected) {
+      const mockAnalysis = generateMockAnalysis(city);
+      return res.json(mockAnalysis);
+    }
+    
     const analysis = await generateMarketAnalysis(city);
     res.json(analysis);
   } catch (error) {
@@ -178,6 +212,12 @@ router.get('/market/:city/history', async (req, res) => {
   try {
     const { city } = req.params;
     const { limit = 10 } = req.query;
+
+    // Use mock data if MongoDB is not connected
+    if (!global.mongoConnected) {
+      const mockAnalysis = generateMockAnalysis(city);
+      return res.json([mockAnalysis]);
+    }
 
     const analyses = await MarketAnalysis.find({
       city: new RegExp(city, 'i'),
@@ -197,10 +237,16 @@ router.get('/occupancy/:city', async (req, res) => {
   try {
     const { city } = req.params;
 
-    const accommodations = await Accommodation.find({
-      city: new RegExp(city, 'i'),
-      isActive: true,
-    });
+    // Use mock data if MongoDB is not connected
+    let accommodations;
+    if (!global.mongoConnected) {
+      accommodations = generateMockAccommodations(city, 50);
+    } else {
+      accommodations = await Accommodation.find({
+        city: new RegExp(city, 'i'),
+        isActive: true,
+      });
+    }
 
     const total = accommodations.length;
     const available = accommodations.filter((acc) => acc.availability.isAvailable).length;
