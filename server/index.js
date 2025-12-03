@@ -51,6 +51,23 @@ app.use('/api/analysis', analysisRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/scraping', scrapingRoutes);
 
+// Root route
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Sistema de Mercado Hoteleiro API',
+    version: '1.0.0',
+    endpoints: {
+      health: '/api/health',
+      accommodations: '/api/accommodations',
+      analysis: '/api/analysis',
+      reports: '/api/reports',
+      scraping: '/api/scraping'
+    },
+    mockDataEnabled: !global.mongoConnected,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Health check
 app.get('/api/health', (req, res) => {
   res.json({
