@@ -253,23 +253,25 @@ export function generateMockAnalysis(cityName) {
       ],
     },
     priceAnalysis: {
-      average: Math.round(avgPrice * 100) / 100,
-      median: Math.round(avgPrice * 0.95 * 100) / 100,
-      min: Math.round(avgPrice * 0.5 * 100) / 100,
-      max: Math.round(avgPrice * 2 * 100) / 100,
+      averagePrice: Math.round(avgPrice * 100) / 100,
+      medianPrice: Math.round(avgPrice * 0.95 * 100) / 100,
+      minPrice: Math.round(avgPrice * 0.5 * 100) / 100,
+      maxPrice: Math.round(avgPrice * 2 * 100) / 100,
       byType: types.reduce((acc, type) => {
         const typeAccs = mockAccommodations.filter(a => a.type === type);
         if (typeAccs.length > 0) {
-          acc[type] = {
-            average: Math.round(typeAccs.reduce((sum, a) => sum + a.currentPrice, 0) / typeAccs.length * 100) / 100,
+          acc.push({
+            type,
+            averagePrice: Math.round(typeAccs.reduce((sum, a) => sum + a.currentPrice, 0) / typeAccs.length * 100) / 100,
             count: typeAccs.length,
-          };
+          });
         }
         return acc;
-      }, {}),
+      }, []),
     },
     occupancyAnalysis: {
       average: Math.round(avgOccupancy * 10) / 10,
+      occupancyRate: Math.round(avgOccupancy * 10) / 10,
       total: mockAccommodations.length,
       byType: types.reduce((acc, type) => {
         const typeAccs = mockAccommodations.filter(a => a.type === type);
@@ -295,6 +297,14 @@ export function generateMockAnalysis(cityName) {
         type: 'oportunidade',
         severity: 'info',
         message: 'Demanda crescente detectada nesta região',
+        affectedAccommodations: Math.floor(mockAccommodations.length * 0.6),
+        date: new Date(),
+      },
+      {
+        type: 'preço',
+        severity: 'medium',
+        message: 'Variação de preços acima da média detectada',
+        affectedAccommodations: Math.floor(mockAccommodations.length * 0.3),
         date: new Date(),
       },
     ],
@@ -302,8 +312,16 @@ export function generateMockAnalysis(cityName) {
       {
         title: 'Ajuste de Preços',
         description: 'Considere ajustar preços com base na demanda atual',
-        priority: 'alta',
+        priority: 'high',
+        category: 'Precificação',
         impact: 'médio',
+      },
+      {
+        title: 'Melhoria de Ocupação',
+        description: 'Estratégias para aumentar taxa de ocupação em períodos de baixa demanda',
+        priority: 'medium',
+        category: 'Operacional',
+        impact: 'alto',
       },
     ],
   };

@@ -4,6 +4,7 @@ import autoTable from 'jspdf-autotable';
 import xlsx from 'xlsx';
 import Accommodation from '../models/Accommodation.js';
 import MarketAnalysis from '../models/MarketAnalysis.js';
+import { generateMockAccommodations, generateMockAnalysis } from '../mockData.js';
 
 const router = express.Router();
 
@@ -12,10 +13,18 @@ router.get('/pdf/:city', async (req, res) => {
   try {
     const { city } = req.params;
 
-    const [accommodations, analysis] = await Promise.all([
-      Accommodation.find({ city: new RegExp(city, 'i'), isActive: true }).lean(),
-      MarketAnalysis.findOne({ city: new RegExp(city, 'i') }).sort({ analysisDate: -1 }),
-    ]);
+    let accommodations, analysis;
+    
+    if (!global.mongoConnected) {
+      // Use mock data
+      accommodations = generateMockAccommodations(city, 50);
+      analysis = generateMockAnalysis(city);
+    } else {
+      [accommodations, analysis] = await Promise.all([
+        Accommodation.find({ city: new RegExp(city, 'i'), isActive: true }).lean(),
+        MarketAnalysis.findOne({ city: new RegExp(city, 'i') }).sort({ analysisDate: -1 }),
+      ]);
+    }
 
     if (accommodations.length === 0) {
       return res.status(404).json({ error: 'Nenhuma hospedagem encontrada para esta cidade' });
@@ -88,8 +97,9 @@ router.get('/pdf/:city', async (req, res) => {
       const analysisY = finalY + 40 > doc.internal.pageSize.getHeight() ? 28 : finalY + 23;
       
       doc.text(`Nível de Demanda: ${analysis.demandAnalysis.level}`, 14, analysisY);
-      doc.text(`Tendência: ${analysis.demandAnalysis.trend}`, 14, analysisY + 6);
-      doc.text(`Taxa de Ocupação: ${analysis.occupancyAnalysis.occupancyRate?.toFixed(1) || 'N/A'}%`, 14, analysisY + 12);
+      doc.text(`Score: ${analysis.demandAnalysis.score}`, 14, analysisY + 6);
+      doc.text(`Tendência: ${analysis.demandAnalysis.trend}`, 14, analysisY + 12);
+      doc.text(`Taxa de Ocupação: ${analysis.occupancyAnalysis.occupancyRate?.toFixed(1) || 'N/A'}%`, 14, analysisY + 18);
     }
 
     // Footer
@@ -121,10 +131,18 @@ router.get('/excel/:city', async (req, res) => {
   try {
     const { city } = req.params;
 
-    const [accommodations, analysis] = await Promise.all([
-      Accommodation.find({ city: new RegExp(city, 'i'), isActive: true }).lean(),
-      MarketAnalysis.findOne({ city: new RegExp(city, 'i') }).sort({ analysisDate: -1 }),
-    ]);
+    let accommodations, analysis;
+    
+    if (!global.mongoConnected) {
+      // Use mock data
+      accommodations = generateMockAccommodations(city, 50);
+      analysis = generateMockAnalysis(city);
+    } else {
+      [accommodations, analysis] = await Promise.all([
+        Accommodation.find({ city: new RegExp(city, 'i'), isActive: true }).lean(),
+        MarketAnalysis.findOne({ city: new RegExp(city, 'i') }).sort({ analysisDate: -1 }),
+      ]);
+    }
 
     if (accommodations.length === 0) {
       return res.status(404).json({ error: 'Nenhuma hospedagem encontrada para esta cidade' });
@@ -181,7 +199,7 @@ router.get('/excel/:city', async (req, res) => {
         { Categoria: 'Preços', Item: 'Mediana', Valor: `R$ ${analysis.priceAnalysis.medianPrice?.toFixed(2) || 'N/A'}` },
         { Categoria: 'Preços', Item: 'Mínimo', Valor: `R$ ${analysis.priceAnalysis.minPrice?.toFixed(2) || 'N/A'}` },
         { Categoria: 'Preços', Item: 'Máximo', Valor: `R$ ${analysis.priceAnalysis.maxPrice?.toFixed(2) || 'N/A'}` },
-        { Categoria: 'Ocupação', Item: 'Taxa Média', Valor: `${analysis.occupancyAnalysis.averageOccupancy?.toFixed(1) || 'N/A'}%` },
+        { Categoria: 'Ocupação', Item: 'Taxa Média', Valor: `${analysis.occupancyAnalysis.occupancyRate?.toFixed(1) || analysis.occupancyAnalysis.average?.toFixed(1) || 'N/A'}%` },
       ];
 
       const ws3 = xlsx.utils.json_to_sheet(analysisData);
@@ -204,10 +222,16 @@ router.get('/summary/:city', async (req, res) => {
   try {
     const { city } = req.params;
 
-    const accommodations = await Accommodation.find({
-      city: new RegExp(city, 'i'),
-      isActive: true,
-    }).lean();
+    let accommodations;
+    
+    if (!global.mongoConnected) {
+      accommodations = generateMockAccommodations(city, 50);
+    } else {
+      accommodations = await Accommodation.find({
+        city: new RegExp(city, 'i'),
+        isActive: true,
+      }).lean();
+    }
 
     if (accommodations.length === 0) {
       return res.status(404).json({ error: 'Nenhuma hospedagem encontrada para esta cidade' });

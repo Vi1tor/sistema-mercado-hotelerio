@@ -176,6 +176,15 @@ router.get('/city/:city', async (req, res) => {
 
       const availableCount = accommodations.filter((acc) => acc.availability.isAvailable).length;
       stats.availabilityRate = (availableCount / accommodations.length) * 100;
+      
+      // Add average occupancy rate
+      const occupancyRates = accommodations
+        .filter(acc => acc.availability?.occupancyRate != null)
+        .map(acc => acc.availability.occupancyRate);
+      
+      if (occupancyRates.length > 0) {
+        stats.averageOccupancy = occupancyRates.reduce((sum, rate) => sum + rate, 0) / occupancyRates.length;
+      }
     }
 
     res.json({

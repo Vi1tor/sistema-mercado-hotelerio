@@ -74,15 +74,16 @@ export async function analyzeCityDemand(city) {
 
     return {
       city,
-      demandLevel,
+      level: demandLevel,
+      demandLevel, // Keep for backwards compatibility
       score: Math.round(score),
       trend,
       factors,
       metrics: {
-        occupancyRate: occupancyRate.toFixed(1),
-        priceIncreaseRate: priceIncreaseRate.toFixed(1),
-        highRatingRate: highRatingRate.toFixed(1),
-        activityRate: activityRate.toFixed(1),
+        occupancyRate: parseFloat(occupancyRate.toFixed(1)),
+        priceIncreaseRate: parseFloat(priceIncreaseRate.toFixed(1)),
+        highRatingRate: parseFloat(highRatingRate.toFixed(1)),
+        activityRate: parseFloat(activityRate.toFixed(1)),
       },
     };
   } catch (error) {

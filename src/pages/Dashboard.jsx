@@ -133,19 +133,19 @@ export default function Dashboard() {
               <p className="text-gray-600 mt-1">{selectedCity}</p>
             </div>
             <div className={`badge ${
-              analysis.demand.demandLevel === 'muito alta' ? 'badge-danger' :
-              analysis.demand.demandLevel === 'alta' ? 'badge-warning' :
-              analysis.demand.demandLevel === 'média' ? 'badge-info' :
+              analysis.demand.level === 'muito alta' ? 'badge-danger' :
+              analysis.demand.level === 'alta' ? 'badge-warning' :
+              analysis.demand.level === 'média' ? 'badge-info' :
               'badge-success'
             }`}>
-              {analysis.demand.demandLevel.toUpperCase()}
+              {(analysis.demand.level || 'média').toUpperCase()}
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
             <div>
               <p className="text-sm text-gray-600 mb-1">Score de Demanda</p>
-              <p className="text-3xl font-bold text-primary-600">{analysis.demand.score}</p>
+              <p className="text-3xl font-bold text-primary-600">{analysis.demand.score || 0}</p>
             </div>
             <div>
               <p className="text-sm text-gray-600 mb-1">Tendência</p>
@@ -155,13 +155,13 @@ export default function Dashboard() {
                   analysis.demand.trend === 'decrescente' ? 'text-red-600' :
                   'text-gray-600'
                 }`} />
-                <p className="text-lg font-semibold capitalize">{analysis.demand.trend}</p>
+                <p className="text-lg font-semibold capitalize">{analysis.demand.trend || 'estável'}</p>
               </div>
             </div>
             <div>
               <p className="text-sm text-gray-600 mb-1">Taxa de Ocupação</p>
               <p className="text-3xl font-bold text-accent-600">
-                {analysis.demand.metrics?.occupancyRate || '0'}%
+                {stats?.averageOccupancy?.toFixed(1) || '0'}%
               </p>
             </div>
           </div>
