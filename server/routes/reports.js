@@ -1,6 +1,7 @@
 import express from 'express';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import PDFDocument from 'pdfkit';
 import xlsx from 'xlsx';
 import Accommodation from '../models/Accommodation.js';
 import MarketAnalysis from '../models/MarketAnalysis.js';
@@ -30,97 +31,157 @@ router.get('/pdf/:city', async (req, res) => {
       return res.status(404).json({ error: 'Nenhuma hospedagem encontrada para esta cidade' });
     }
 
-    // Create PDF
-    const doc = new jsPDF();
-    const pageWidth = doc.internal.pageSize.getWidth();
+    // Try to create PDF using jsPDF (browser-oriented). If it fails in Node, fallback to pdfkit.
+    try {
+      const doc = new jsPDF();
+      const pageWidth = doc.internal.pageSize.getWidth();
 
-    // Title
-    doc.setFontSize(20);
-    doc.setTextColor(14, 116, 144);
-    doc.text(`Relatório de Mercado - ${city}`, pageWidth / 2, 20, { align: 'center' });
+      // Title
+      doc.setFontSize(20);
+      doc.setTextColor(14, 116, 144);
+      doc.text(`Relatório de Mercado - ${city}`, pageWidth / 2, 20, { align: 'center' });
 
-    // Date
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, 28, { align: 'center' });
+      // Date
+      doc.setFontSize(10);
+      doc.setTextColor(100);
+      doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth / 2, 28, { align: 'center' });
 
-    // Summary statistics
-    doc.setFontSize(14);
-    doc.setTextColor(0);
-    doc.text('Resumo Geral', 14, 40);
+      // Summary statistics
+      doc.setFontSize(14);
+      doc.setTextColor(0);
+      doc.text('Resumo Geral', 14, 40);
 
-    const stats = {
-      total: accommodations.length,
-      avgPrice: (accommodations.reduce((sum, acc) => sum + acc.currentPrice, 0) / accommodations.length).toFixed(2),
-      avgRating: accommodations.filter((a) => a.rating?.score).reduce((sum, acc, _, arr) => sum + acc.rating.score / arr.length, 0).toFixed(1),
-    };
-
-    doc.setFontSize(10);
-    doc.text(`Total de Hospedagens: ${stats.total}`, 14, 50);
-    doc.text(`Preço Médio: R$ ${stats.avgPrice}`, 14, 56);
-    doc.text(`Avaliação Média: ${stats.avgRating}/10`, 14, 62);
-
-    // Accommodations table
-    doc.text('Lista de Hospedagens', 14, 75);
-
-    const tableData = accommodations.slice(0, 50).map((acc) => [
-      acc.name,
-      acc.type,
-      `R$ ${acc.currentPrice.toFixed(2)}`,
-      acc.rating?.score ? acc.rating.score.toFixed(1) : 'N/A',
-      acc.availability.isAvailable ? 'Sim' : 'Não',
-    ]);
-
-    autoTable(doc, {
-      startY: 80,
-      head: [['Nome', 'Tipo', 'Preço', 'Nota', 'Disponível']],
-      body: tableData,
-      theme: 'striped',
-      headStyles: { fillColor: [14, 116, 144] },
-      styles: { fontSize: 8 },
-    });
-
-    // Analysis section if available
-    if (analysis) {
-      const finalY = doc.lastAutoTable.finalY || 80;
-      
-      if (finalY + 40 > doc.internal.pageSize.getHeight()) {
-        doc.addPage();
-        doc.setFontSize(14);
-        doc.text('Análise de Mercado', 14, 20);
-      } else {
-        doc.setFontSize(14);
-        doc.text('Análise de Mercado', 14, finalY + 15);
-      }
+      const stats = {
+        total: accommodations.length,
+        avgPrice: (accommodations.reduce((sum, acc) => sum + acc.currentPrice, 0) / accommodations.length).toFixed(2),
+        avgRating: accommodations.filter((a) => a.rating?.score).reduce((sum, acc, _, arr) => sum + acc.rating.score / arr.length, 0).toFixed(1),
+      };
 
       doc.setFontSize(10);
-      const analysisY = finalY + 40 > doc.internal.pageSize.getHeight() ? 28 : finalY + 23;
-      
-      doc.text(`Nível de Demanda: ${analysis.demandAnalysis.level}`, 14, analysisY);
-      doc.text(`Score: ${analysis.demandAnalysis.score}`, 14, analysisY + 6);
-      doc.text(`Tendência: ${analysis.demandAnalysis.trend}`, 14, analysisY + 12);
-      doc.text(`Taxa de Ocupação: ${analysis.occupancyAnalysis.occupancyRate?.toFixed(1) || 'N/A'}%`, 14, analysisY + 18);
+      doc.text(`Total de Hospedagens: ${stats.total}`, 14, 50);
+      doc.text(`Preço Médio: R$ ${stats.avgPrice}`, 14, 56);
+      doc.text(`Avaliação Média: ${stats.avgRating}/10`, 14, 62);
+
+      // Accommodations table
+      doc.text('Lista de Hospedagens', 14, 75);
+
+      const tableData = accommodations.slice(0, 50).map((acc) => [
+        acc.name,
+        acc.type,
+        `R$ ${acc.currentPrice.toFixed(2)}`,
+        acc.rating?.score ? acc.rating.score.toFixed(1) : 'N/A',
+        acc.availability.isAvailable ? 'Sim' : 'Não',
+      ]);
+
+      autoTable(doc, {
+        startY: 80,
+        head: [['Nome', 'Tipo', 'Preço', 'Nota', 'Disponível']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [14, 116, 144] },
+        styles: { fontSize: 8 },
+      });
+
+      // Analysis section if available
+      if (analysis) {
+        const finalY = doc.lastAutoTable.finalY || 80;
+        
+        if (finalY + 40 > doc.internal.pageSize.getHeight()) {
+          doc.addPage();
+          doc.setFontSize(14);
+          doc.text('Análise de Mercado', 14, 20);
+        } else {
+          doc.setFontSize(14);
+          doc.text('Análise de Mercado', 14, finalY + 15);
+        }
+
+        doc.setFontSize(10);
+        const analysisY = finalY + 40 > doc.internal.pageSize.getHeight() ? 28 : finalY + 23;
+        
+        doc.text(`Nível de Demanda: ${analysis.demandAnalysis.level}`, 14, analysisY);
+        doc.text(`Score: ${analysis.demandAnalysis.score}`, 14, analysisY + 6);
+        doc.text(`Tendência: ${analysis.demandAnalysis.trend}`, 14, analysisY + 12);
+        doc.text(`Taxa de Ocupação: ${analysis.occupancyAnalysis.occupancyRate?.toFixed(1) || 'N/A'}%`, 14, analysisY + 18);
+      }
+
+      // Footer
+      const pageCount = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(
+          `Sistema de Mercado Hoteleiro - Página ${i} de ${pageCount}`,
+          pageWidth / 2,
+          doc.internal.pageSize.getHeight() - 10,
+          { align: 'center' }
+        );
+      }
+
+      const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=relatorio-${city.toLowerCase()}-${Date.now()}.pdf`);
+      return res.send(pdfBuffer);
+    } catch (err) {
+      console.warn('jsPDF failed on server, falling back to pdfkit:', err.message || err);
+      // Fallback: generate a simple PDF using pdfkit (server-friendly)
+      try {
+        const pdfDoc = new PDFDocument({ size: 'A4', margin: 40 });
+        const buffers = [];
+        pdfDoc.on('data', (chunk) => buffers.push(chunk));
+        pdfDoc.on('end', () => {
+          const finalBuffer = Buffer.concat(buffers);
+          res.setHeader('Content-Type', 'application/pdf');
+          res.setHeader('Content-Disposition', `attachment; filename=relatorio-${city.toLowerCase()}-${Date.now()}.pdf`);
+          res.send(finalBuffer);
+        });
+
+        // Title
+        pdfDoc.fontSize(18).fillColor('#0E7490').text(`Relatório de Mercado - ${city}`, { align: 'center' });
+        pdfDoc.moveDown(0.5);
+        pdfDoc.fontSize(10).fillColor('#666').text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, { align: 'center' });
+        pdfDoc.moveDown(1);
+
+        // Summary
+        const stats = {
+          total: accommodations.length,
+          avgPrice: (accommodations.reduce((sum, acc) => sum + acc.currentPrice, 0) / accommodations.length).toFixed(2),
+          avgRating: accommodations.filter((a) => a.rating?.score).reduce((sum, acc, _, arr) => sum + acc.rating.score / arr.length, 0).toFixed(1),
+        };
+
+        pdfDoc.fontSize(12).fillColor('#000').text('Resumo Geral');
+        pdfDoc.moveDown(0.5);
+        pdfDoc.fontSize(10).text(`Total de Hospedagens: ${stats.total}`);
+        pdfDoc.text(`Preço Médio: R$ ${stats.avgPrice}`);
+        pdfDoc.text(`Avaliação Média: ${stats.avgRating}/10`);
+        pdfDoc.moveDown(1);
+
+        // Simple accommodations list (first 50)
+        pdfDoc.fontSize(12).text('Lista de Hospedagens');
+        pdfDoc.moveDown(0.5);
+        accommodations.slice(0, 50).forEach((acc) => {
+          pdfDoc.fontSize(10).text(`- ${acc.name} | ${acc.type} | R$ ${acc.currentPrice.toFixed(2)} | Nota: ${acc.rating?.score ?? 'N/A'} | ${acc.availability.isAvailable ? 'Sim' : 'Não'}`);
+        });
+
+        // Analysis summary
+        if (analysis) {
+          pdfDoc.addPage();
+          pdfDoc.fontSize(14).text('Análise de Mercado');
+          pdfDoc.moveDown(0.5);
+          pdfDoc.fontSize(10).text(`Nível de Demanda: ${analysis.demandAnalysis.level}`);
+          pdfDoc.text(`Score: ${analysis.demandAnalysis.score}`);
+          pdfDoc.text(`Tendência: ${analysis.demandAnalysis.trend}`);
+          pdfDoc.text(`Taxa de Ocupação: ${analysis.occupancyAnalysis.occupancyRate?.toFixed(1) || 'N/A'}%`);
+        }
+
+        pdfDoc.end();
+        return;
+      } catch (pdfErr) {
+        console.error('Fallback PDF generation failed:', pdfErr);
+        return res.status(500).json({ error: 'Erro ao gerar relatório PDF', details: pdfErr.message || String(pdfErr) });
+      }
     }
-
-    // Footer
-    const pageCount = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= pageCount; i++) {
-      doc.setPage(i);
-      doc.setFontSize(8);
-      doc.setTextColor(150);
-      doc.text(
-        `Sistema de Mercado Hoteleiro - Página ${i} de ${pageCount}`,
-        pageWidth / 2,
-        doc.internal.pageSize.getHeight() - 10,
-        { align: 'center' }
-      );
-    }
-
-    const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
-
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=relatorio-${city.toLowerCase()}-${Date.now()}.pdf`);
-    res.send(pdfBuffer);
   } catch (error) {
     res.status(500).json({ error: 'Erro ao gerar relatório PDF', details: error.message });
   }
